@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+body {
+  @apply bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen text-white;
+}
+
+.my-card { @apply bg-zinc-900/10; } /* Use the slash / for opacity */
