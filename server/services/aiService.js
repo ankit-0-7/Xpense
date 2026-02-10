@@ -1,122 +1,81 @@
-// import { GoogleGenAI } from "@google/genai";
-
-// export const analyzeReceipt = async (fileBuffer, mimeType) => {
-//   // Initialize with the 2026 Unified SDK
-//   // It looks for GOOGLE_API_KEY in your .env by default
-//   const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
-  
-//   // Use the 2026 stable preview model
-//   const modelName = "gemini-3-flash";
-
-//   const prompt = `
-//     Analyze this document (receipt/invoice/bill). 
-//     Extract the following data and return it as a JSON object:
-//     - merchant: Name of the vendor.
-//     - amount: Total amount paid as a number.
-//     - category: Assign one from [Food, Travel, Shopping, Bills, Other].
-//   `;
-
-//   try {
-//     console.log(`Analyzing ${mimeType} with ${modelName}...`);
-    
-//     const response = await ai.models.generateContent({
-//       model: modelName,
-//       contents: [
-//         {
-//           role: 'user',
-//           parts: [
-//             { text: prompt },
-//             {
-//               inlineData: {
-//                 // Ensure raw base64 string without data-url prefix
-//                 data: fileBuffer.toString("base64"),
-//                 mimeType: mimeType
-//               }
-//             }
-//           ]
-//         }
-//       ],
-//       config: {
-//         // Force output to be pure JSON
-//         response_mime_type: "application/json"
-//       }
-//     });
-
-//     // Parse and return the clean JSON object
-//     return JSON.parse(response.text);
-
-//   } catch (error) {
-//     console.error("❌ Analysis Error:", error.message);
-    
-//     if (error.message.includes("400")) {
-//       throw new Error("Invalid file format or corrupt data. Please try a different file.");
-//     }
-//     throw new Error("AI Processing failed: " + error.message);
-//   }
-// };
-
 import axios from 'axios';
-import FormData from 'form-data';
+import Groq from "groq-sdk";
+import dotenv from 'dotenv';
+dotenv.config();
 
-export const analyzeReceipt = async (fileBuffer, mimeType) => {
-  const API_KEY = process.env.OCR_SPACE_API_KEY;
-  
-  const form = new FormData();
-  
-  // 1. Add parameters first
-  form.append('apikey', API_KEY);
-  form.append('language', 'eng');
-  form.append('isTable', 'true');
-  form.append('OCREngine', '2');
-  
-  // 2. Add the file with a specific filename
-  const extension = mimeType.split('/')[1] || 'jpg';
-  form.append('file', fileBuffer, {
-    filename: `scan.${extension}`,
-    contentType: mimeType,
-  });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+export async function analyzeReceipt(fileBuffer, mimeType) {
   try {
-    console.log(`🚀 Sending ${mimeType} (${(fileBuffer.length / 1024).toFixed(1)} KB) to OCR.space...`);
+    console.log("📤 Sending image to OCR Space...");
 
-    // 3. The "No-Fail" Axios Configuration
-    const response = await axios({
-      method: 'post',
-      url: 'https://api.ocr.space/parse/image',
-      data: form.getBuffer(), // Send the raw compiled buffer
-      headers: {
-        ...form.getHeaders(), // Let the form library set the Content-Type + Boundary
-        'Content-Length': form.getLengthSync() // Tell the server exactly how much data to expect
+    // 1. Convert Image to Base64 for OCR Space
+    const base64Image = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+
+    // 2. Call OCR Space API
+    const ocrResponse = await axios.post(
+      'https://api.ocr.space/parse/image',
+      {
+        apikey: process.env.OCR_SPACE_API_KEY,
+        base64Image: base64Image,
+        language: 'eng',
+        isOverlayRequired: false,
+        detectOrientation: true,
+        scale: true,
       },
-      timeout: 30000
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }
+    );
+
+    // Check for OCR errors
+    if (ocrResponse.data.IsErroredOnProcessing) {
+      throw new Error(`OCR Space Error: ${ocrResponse.data.ErrorMessage}`);
+    }
+
+    // Extract Raw Text
+    const rawText = ocrResponse.data.ParsedResults?.[0]?.ParsedText;
+    if (!rawText) throw new Error("No text found in image.");
+
+    console.log("✅ OCR Success. Raw Text Length:", rawText.length);
+
+    // 3. Use Groq (Llama 3) to Parse Text into JSON
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are a JSON extraction bot. Output ONLY raw JSON. No markdown, no comments."
+        },
+        {
+          role: "user",
+          content: `Extract the following fields from this receipt text:
+          - merchant (store name, or "Unknown")
+          - date (YYYY-MM-DD, if missing use today)
+          - amount (number only)
+          - category (e.g., Food, Travel, Shopping, Bills, Medical)
+
+          Receipt Text:
+          """${rawText}"""`
+        }
+      ],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0,
     });
 
-    if (response.data.IsErroredOnProcessing) {
-      const msg = response.data.ErrorMessage ? response.data.ErrorMessage[0] : "Scan failed";
-      throw new Error(msg);
-    }
+    // Clean and Parse JSON
+    const jsonStr = completion.choices[0].message.content.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(jsonStr);
 
-    if (!response.data.ParsedResults) {
-      throw new Error("E301: Server returned no parsed results. Check image clarity.");
-    }
-
-    const rawText = response.data.ParsedResults[0].ParsedText;
-    return parseReceiptText(rawText);
+    return result;
 
   } catch (error) {
-    console.error("❌ OCR Detailed Failure:", error.message);
-    throw new Error(error.message);
+    console.error("❌ Scan Service Error:", error.message);
+    // Return safe fallback so app doesn't crash
+    return {
+      merchant: "Scan Failed",
+      amount: 0,
+      date: new Date().toISOString().split('T')[0],
+      category: "Other"
+    };
   }
-};
-
-// ... keep your parseReceiptText function from the previous step ...
-
-const parseReceiptText = (text) => {
-  if (!text) return { merchant: "Unknown", amount: 0, category: "Other" };
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  const merchant = lines[0] || "Unknown";
-  const amounts = text.match(/\d+\.\d{2}/g) || [];
-  const total = amounts.length > 0 ? Math.max(...amounts.map(Number)) : 0;
-
-  return { merchant, amount: total, category: "Other" };
-};
+}

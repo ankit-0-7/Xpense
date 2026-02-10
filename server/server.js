@@ -4,97 +4,233 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import multer from 'multer';
-import { analyzeReceipt } from './services/aiService.js';
-import Expense from './models/Expense.js';
+import Groq from "groq-sdk"; 
+import bcrypt from 'bcryptjs';      // SECURITY: Encrypts passwords
+import jwt from 'jsonwebtoken';     // SECURITY: Creates login tokens
+import { analyzeReceipt } from './services/aiService.js'; 
 
 const app = express();
 
-// Middleware
+// --- MIDDLEWARE ---
 app.use(cors({
   origin: true, 
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'] // Allow tokens
 }));
 app.use(express.json());
 
-// --- CRITICAL FIX: Switch to Memory Storage ---
-// This ensures req.file.buffer is populated for OCR.space
+// --- CONFIG ---
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 1024 * 1024 } // 1MB Limit for OCR.space Free Tier
+  limits: { fileSize: 5 * 1024 * 1024 } 
 });
 
-// Database Connection
+// --- DATABASE ---
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Connected Successfully!"))
-  .catch((err) => console.log("❌ DB Connection Error:", err));
+  .then(() => console.log("✅ MongoDB Connected!"))
+  .catch((err) => console.log("❌ DB Error:", err));
 
-// Routes
-app.get('/', (req, res) => res.send("Server is running! 🚀"));
+// --- MODELS ---
 
-app.get('/api/expenses', async (req, res) => {
+// 1. User Model (New)
+const UserSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true }
+});
+const User = mongoose.model('User', UserSchema);
+
+// 2. Settings Model (Linked to User)
+const SettingsSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  monthlyBudget: { type: Number, default: 10000 },
+  dailyBudget: { type: Number, default: 500 },
+  categories: { type: [String], default: ['Food', 'Travel', 'Shopping', 'Bills', 'Rent', 'Medical', 'Utilities'] }
+});
+const Settings = mongoose.model('Settings', SettingsSchema);
+
+// 3. Expense Model (Linked to User)
+const ExpenseSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  title: String,
+  amount: Number,
+  category: String,
+  date: { type: Date, default: Date.now },
+  paymentMode: { type: String, default: 'Cash' },
+  description: { type: String, default: '' },
+  isAIProcessed: { type: Boolean, default: false }
+});
+const Expense = mongoose.model('Expense', ExpenseSchema);
+
+// --- AUTH MIDDLEWARE (The Guard) ---
+const auth = (req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: "Access Denied" });
+
   try {
-    const expenses = await Expense.find().sort({ date: -1 });
-    res.json(expenses);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching expenses" });
+    const verified = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = verified; // Attaches the User ID to the request
+    next();
+  } catch (err) {
+    res.status(400).json({ error: "Invalid Token" });
   }
+};
+
+// --- ROUTES ---
+
+// 1. AUTHENTICATION (Register/Login)
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ error: "Email already exists" });
+
+    // Encrypt password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUser = new User({ name, email, password: hashedPassword });
+    const savedUser = await newUser.save();
+
+    // Create default settings for new user
+    await new Settings({ user: savedUser._id }).save();
+
+    res.status(201).json({ message: "User registered!" });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/expenses', async (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
-    const { title, amount, category, date } = req.body;
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: "User not found" });
+
+    const validPass = await bcrypt.compare(password, user.password);
+    if (!validPass) return res.status(400).json({ error: "Invalid password" });
+
+    // Create Token
+    const token = jwt.sign({ _id: user._id, name: user.name }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    
+    res.json({ token, user: { name: user.name, email: user.email } });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 2. SETTINGS ROUTES (Protected)
+app.get('/api/settings', auth, async (req, res) => {
+  try {
+    let settings = await Settings.findOne({ user: req.user._id });
+    if (!settings) {
+      settings = new Settings({ user: req.user._id });
+      await settings.save();
+    }
+    res.json(settings);
+  } catch (error) { res.status(500).json({ error: "Settings Error" }); }
+});
+
+app.post('/api/settings/budget', auth, async (req, res) => {
+  try {
+    const { monthlyBudget, dailyBudget } = req.body;
+    const update = {};
+    if (monthlyBudget !== undefined) update.monthlyBudget = Number(monthlyBudget);
+    if (dailyBudget !== undefined) update.dailyBudget = Number(dailyBudget);
+    
+    await Settings.findOneAndUpdate({ user: req.user._id }, update, { upsert: true });
+    res.json({ message: "Budgets updated" });
+  } catch (error) { res.status(500).json({ error: "Update Failed" }); }
+});
+
+app.post('/api/settings/categories', auth, async (req, res) => {
+  try {
+    await Settings.findOneAndUpdate({ user: req.user._id }, { $addToSet: { categories: req.body.category } });
+    res.json({ message: "Category added" });
+  } catch (error) { res.status(500).json({ error: "Category Error" }); }
+});
+
+// 3. EXPENSE ROUTES (Protected)
+app.get('/api/expenses', auth, async (req, res) => {
+  try {
+    // Only get expenses for THIS user
+    const expenses = await Expense.find({ user: req.user._id }).sort({ date: -1 });
+    res.json(expenses);
+  } catch (error) { res.status(500).json({ error: "Fetch Error" }); }
+});
+
+app.post('/api/expenses', auth, async (req, res) => {
+  try {
+    const { title, amount, category, date, paymentMode, description } = req.body;
     const newExpense = new Expense({
-      title,
-      amount: Number(amount),
+      user: req.user._id, // Attach User ID
+      title, 
+      amount: Number(amount), 
       category: category || 'Other',
-      date: date || Date.now(),
+      date: date || new Date(), 
+      paymentMode: paymentMode || 'Cash', 
+      description: description || '',
       isAIProcessed: false 
     });
-    await newExpense.save();
-    res.status(201).json(newExpense);
-  } catch (error) {
-    res.status(400).json({ message: "Error saving expense" });
-  }
+    const saved = await newExpense.save();
+    res.status(201).json(saved);
+  } catch (error) { res.status(500).json({ error: "Save Failed" }); }
 });
 
-// --- CRITICAL FIX: Update Scan Route ---
-app.post('/api/scan', upload.single('receipt'), async (req, res) => {
+app.delete('/api/expenses/:id', auth, async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded. Ensure the field name is 'receipt'" });
-    }
+    // Only delete if it belongs to THIS user
+    await Expense.findOneAndDelete({ _id: req.params.id, user: req.user._id });
+    res.json({ message: "Deleted" });
+  } catch (error) { res.status(500).json({ error: "Delete Failed" }); }
+});
 
-    console.log(`🚀 Processing ${req.file.originalname} (${req.file.size} bytes)`);
+app.delete('/api/expenses/all', auth, async (req, res) => {
+  try {
+    await Expense.deleteMany({ user: req.user._id });
+    res.json({ message: "All data reset" });
+  } catch (error) { res.status(500).json({ error: "Reset Failed" }); }
+});
 
-    // Pass the buffer and mimetype directly to the service
+app.post('/api/scan', auth, upload.single('receipt'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file" });
     const extractedData = await analyzeReceipt(req.file.buffer, req.file.mimetype);
     
     const newExpense = new Expense({
-      title: extractedData.merchant,
+      user: req.user._id,
+      title: extractedData.merchant, 
       amount: extractedData.amount,
-      category: extractedData.category,
-      date: new Date(),
+      category: extractedData.category, 
+      date: new Date(), 
+      paymentMode: 'Cash', 
+      description: 'Scanned Receipt',
       isAIProcessed: true
     });
-
+    
     await newExpense.save();
     res.json(newExpense);
-  } catch (error) {
-    console.error("❌ Scan Error:", error.message);
-    res.status(500).json({ error: error.message || "AI Scanning failed." });
-  }
+  } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-app.delete('/api/expenses/:id', async (req, res) => {
+// 4. AI REPORT ROUTE (Protected)
+app.post('/api/analyze-spending', auth, async (req, res) => {
   try {
-    await Expense.findByIdAndDelete(req.params.id);
-    res.json({ message: "Expense deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Error deleting expense" });
-  }
+    const expenses = await Expense.find({ user: req.user._id });
+    const settings = await Settings.findOne({ user: req.user._id });
+    const mBudget = settings ? settings.monthlyBudget : 10000;
+    const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const summary = expenses.slice(0, 40).map(e => `- ${e.title}: ₹${e.amount} (${e.category})`).join('\n');
+    
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    const prompt = `Act as a strict Indian financial advisor. Budget: ₹${mBudget}. Spent: ₹${totalSpent}. Transactions:\n${summary}\nProvide a markdown report: 1. Health Status (Emoji). 2. Breakdown. 3. Advice. 4. Reality Check.`;
+
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "llama-3.3-70b-versatile",
+    });
+
+    res.json({ report: chatCompletion.choices[0]?.message?.content });
+  } catch (error) { res.status(500).json({ error: "AI Failed" }); }
 });
 
 const PORT = process.env.PORT || 5000;
