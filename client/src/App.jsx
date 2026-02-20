@@ -12,6 +12,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 import ReactMarkdown from 'react-markdown'; 
+
 import LandingPage from './LandingPage';
 import logo from "./ExpenseLogo.png"; // Ensure this image is in client/src/
 import { CurrencyProvider, useCurrency } from './context/CurrencyContext.jsx'; 

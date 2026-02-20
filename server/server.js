@@ -15,10 +15,14 @@ const app = express();
 
 // --- MIDDLEWARE ---
 app.use(cors({
-  origin: true, 
+  // Add your actual Vercel URL and your local development URL
+  origin: [
+    "http://localhost:5173", 
+    "https://xpense-gules.vercel.app/" // Replace this with your REAL Vercel URL
+  ], 
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'] // Allow tokens
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
