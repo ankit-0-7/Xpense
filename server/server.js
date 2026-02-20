@@ -14,13 +14,26 @@ import { analyzeReceipt } from './services/aiService.js';
 const app = express();
 
 // --- MIDDLEWARE ---
+// app.use(cors({
+//   // Add your actual Vercel URL and your local development URL
+//   origin: [
+//     "http://localhost:5173", 
+//     "https://xpense-gules.vercel.app/",
+//     "https://xpense-5v0rjazbu-ankit-sharmas-projects-b09bf265.vercel.app" // Replace this with your REAL Vercel URL
+//   ], 
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization']
+// }));
 app.use(cors({
-  // Add your actual Vercel URL and your local development URL
-  origin: [
-    "http://localhost:5173", 
-    "https://xpense-gules.vercel.app/",
-    "https://xpense-5v0rjazbu-ankit-sharmas-projects-b09bf265.vercel.app" // Replace this with your REAL Vercel URL
-  ], 
+  origin: function (origin, callback) {
+    // Allows localhost and ANY Vercel deployment
+    if (!origin || origin.endsWith(".vercel.app") || origin.includes("localhost")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
