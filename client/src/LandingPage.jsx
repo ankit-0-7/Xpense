@@ -9,7 +9,9 @@ import backgroundImage from "./Untitled design.png";
 import logo from "./ExpenseLogo.png"; 
 
 // const API_BASE_URL = "https://probable-waddle-v9xw9q9gxvj24pg-5000.app.github.dev";
-const API_BASE_URL = "https://xpense-backend-a9fy.onrender.com";
+// const API_BASE_URL = "https://xpense-backend-a9fy.onrender.com";
+// This forces the app to use Render as the backup if the Vercel variable fails
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://xpense-backend-a9fy.onrender.com";
 
 // --- ANIMATION VARIANTS ---
 const fadeUpVariants = {

@@ -19,7 +19,9 @@ import { CurrencyProvider, useCurrency } from './context/CurrencyContext.jsx';
 //change this line when using codespace
 // const API_BASE_URL = import.meta.env.VITE_API_URL || "https://probable-waddle-v9xw9q9gxvj24pg-5000.app.github.dev";
 // Change line 18 to this:
-const API_BASE_URL = "https://xpense-backend-a9fy.onrender.com";
+// const API_BASE_URL = "https://xpense-backend-a9fy.onrender.com";
+// This forces the app to use Render as the backup if the Vercel variable fails
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://xpense-backend-a9fy.onrender.com";
 // --- REUSABLE COMPONENTS ---
 const Card = ({ children, className = "" }) => (
   <motion.div 
