@@ -3,15 +3,18 @@ import axios from 'axios';
 import { 
   LayoutDashboard, PlusCircle, BarChart3, FileText, Upload, Settings, 
   Bell, ChevronRight, Trash2, Loader2, Camera, Menu, X, Wallet, IndianRupee, 
-  Edit3, CreditCard, Calendar, PieChart as PieIcon, Save, Download, AlertTriangle, User, LogOut
+  Edit3, CreditCard, Calendar, PieChart as PieIcon, Save, Download, AlertTriangle, User, LogOut, CheckCircle, UploadCloud, Globe, ArrowRightLeft, TrendingUp, RefreshCw 
 } from 'lucide-react';
 import { 
-  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, PieChart, Pie, ReferenceLine, BarChart 
+  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, PieChart, Pie, ReferenceLine, BarChart, 
+  AreaChart, Area 
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
+
 import ReactMarkdown from 'react-markdown'; 
 import LandingPage from './LandingPage';
 import logo from "./ExpenseLogo.png"; // Ensure this image is in client/src/
+import { CurrencyProvider, useCurrency } from './context/CurrencyContext.jsx'; 
 
 const API_BASE_URL = "https://probable-waddle-v9xw9q9gxvj24pg-5000.app.github.dev";
 
@@ -27,57 +30,43 @@ const Card = ({ children, className = "" }) => (
   </motion.div>
 );
 
-const Sidebar = ({ activeTab, setActiveTab, onUploadClick, isOpen, toggleSidebar, onLogout }) => (
-  <>
-    {/* Mobile Overlay */}
-    {isOpen && (
-      <div 
-        className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
-        onClick={toggleSidebar}
-      />
-    )}
+const Sidebar = ({ activeTab, setActiveTab, onUploadClick, isOpen, toggleSidebar }) => {
+  const userName = localStorage.getItem('userName') || 'User';
+  const userInitial = userName.charAt(0).toUpperCase();
 
-    {/* Sidebar Content */}
-    <div className={`fixed left-0 top-0 h-screen w-64 bg-[#18181b] border-r border-white/5 z-50 transition-transform duration-300 ease-in-out ${
-      isOpen ? 'translate-x-0' : '-translate-x-full'
-    } md:translate-x-0 flex flex-col p-6 font-sans`}>
-      
-      <div className="flex items-center justify-between mb-10">
-        <div className="flex items-center gap-3">
-           <img src={logo} alt="Xpense" className="h-12 w-auto object-contain" />
+  return (
+    <>
+      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm" onClick={toggleSidebar} />}
+  
+      <div className={`fixed left-0 top-0 h-screen w-64 bg-[#18181b] border-r border-white/5 z-50 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 flex flex-col p-6 font-sans`}>
+        
+        <div className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-3"><img src={logo} alt="Xpense" className="h-12 w-auto object-contain" /></div>
+          <button onClick={toggleSidebar} className="md:hidden text-gray-400"><X size={24} /></button>
         </div>
-        <button onClick={toggleSidebar} className="md:hidden text-gray-400">
-          <X size={24} />
-        </button>
-      </div>
-
-      <nav className="flex-1 space-y-2">
-        <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); toggleSidebar(); }} />
-        <NavItem icon={<BarChart3 size={20} />} label="Analytics" active={activeTab === 'analytics'} onClick={() => { setActiveTab('analytics'); toggleSidebar(); }} />
-        <NavItem icon={<FileText size={20} />} label="AI Reports" active={activeTab === 'reports'} onClick={() => { setActiveTab('reports'); toggleSidebar(); }} />
-        <div onClick={() => { onUploadClick(); toggleSidebar(); }}>
-          <NavItem icon={<Upload size={20} />} label="Upload Receipt" />
+  
+        <nav className="flex-1 space-y-2">
+          <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); toggleSidebar(); }} />
+          <NavItem icon={<BarChart3 size={20} />} label="Analytics" active={activeTab === 'analytics'} onClick={() => { setActiveTab('analytics'); toggleSidebar(); }} />
+          <NavItem icon={<FileText size={20} />} label="AI Reports" active={activeTab === 'reports'} onClick={() => { setActiveTab('reports'); toggleSidebar(); }} />
+          
+          {/* NEW: Currency Rates Tab */}
+          <NavItem icon={<Globe size={20} />} label="Currency Rates" active={activeTab === 'rates'} onClick={() => { setActiveTab('rates'); toggleSidebar(); }} />
+          
+          <div onClick={() => { onUploadClick(); toggleSidebar(); }}><NavItem icon={<Upload size={20} />} label="Upload Receipt" /></div>
+          <NavItem icon={<Settings size={20} />} label="Settings" active={activeTab === 'settings'} onClick={() => { setActiveTab('settings'); toggleSidebar(); }} />
+        </nav>
+  
+        <div className="mt-auto border-t border-white/5 pt-4">
+           <div className="bg-[#27272a] rounded-xl p-4 border border-white/5 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-sm font-bold text-emerald-400">{userInitial}</div>
+              <h4 className="text-sm font-semibold text-white">{userName}</h4>
+           </div>
         </div>
-        <NavItem icon={<Settings size={20} />} label="Settings" active={activeTab === 'settings'} onClick={() => { setActiveTab('settings'); toggleSidebar(); }} />
-      </nav>
-
-      <div className="mt-auto">
-         <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 mb-4 rounded-xl text-red-400 hover:bg-red-500/10 transition-all font-medium">
-            <LogOut size={20}/> Logout
-         </button>
-         <div className="bg-[#27272a] rounded-xl p-4 border border-white/5">
-            <div className="flex items-center gap-3 mb-2">
-               <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-xs text-emerald-400">EU</div>
-               <div>
-                  <h4 className="text-sm font-semibold text-white">{localStorage.getItem('userName') || 'User'}</h4>
-                  <p className="text-xs text-gray-400">Pro Member</p>
-               </div>
-            </div>
-         </div>
       </div>
-    </div>
-  </>
-);
+    </>
+  );
+};
 
 const NavItem = ({ icon, label, active, onClick }) => (
   <div onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all ${
@@ -89,6 +78,7 @@ const NavItem = ({ icon, label, active, onClick }) => (
 
 const AddTransactionModal = ({ isOpen, onClose, onSubmit, categories, isSubmitting }) => {
   if (!isOpen) return null;
+  const { currency } = useCurrency(); 
   const [localData, setLocalData] = useState({
     title: '', amount: '', category: 'Food', date: new Date().toISOString().split('T')[0],
     paymentMode: 'UPI', description: ''
@@ -113,8 +103,8 @@ const AddTransactionModal = ({ isOpen, onClose, onSubmit, categories, isSubmitti
           <div>
             <label className="text-xs text-gray-400 font-medium ml-1">Amount</label>
             <div className="relative mt-1">
-              <span className="absolute left-4 top-3.5 text-emerald-400 font-bold text-lg">₹</span>
-              <input type="number" className="w-full bg-[#27272a] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white text-lg focus:outline-none focus:border-emerald-500 transition-colors" 
+              <span className="absolute left-4 top-3.5 text-emerald-400 font-bold text-lg">{currency}</span>
+              <input type="number" className="w-full bg-[#27272a] border border-white/10 rounded-xl py-3 pl-16 pr-4 text-white text-lg focus:outline-none focus:border-emerald-500 transition-colors" 
                 placeholder="0.00" value={localData.amount} onChange={e => setLocalData({...localData, amount: e.target.value})} autoFocus />
             </div>
           </div>
@@ -170,18 +160,135 @@ const AddTransactionModal = ({ isOpen, onClose, onSubmit, categories, isSubmitti
   );
 };
 
+// --- NEW COMPONENT: CURRENCY CONVERTER VIEW ---
+const CurrencyConverterView = () => {
+    const { rates } = useCurrency();
+    const [amount, setAmount] = useState(1);
+    const [fromCurr, setFromCurr] = useState('USD');
+    const [toCurr, setToCurr] = useState('INR');
+    
+    // Animation for the swap button
+    const [isRotating, setIsRotating] = useState(false);
+
+    const convertedValue = useMemo(() => {
+        if (!rates) return 0;
+        const rateFrom = rates[fromCurr] || 1;
+        const rateTo = rates[toCurr] || 1;
+        return ((rateTo / rateFrom) * amount).toFixed(2);
+    }, [amount, fromCurr, toCurr, rates]);
+
+    const handleSwap = () => {
+        setIsRotating(true);
+        const temp = fromCurr;
+        setFromCurr(toCurr);
+        setToCurr(temp);
+        setTimeout(() => setIsRotating(false), 500);
+    };
+
+    const currencyList = rates ? Object.keys(rates) : ['INR', 'USD', 'EUR', 'GBP', 'AED', 'JPY', 'CAD'];
+
+    return (
+        <div className="col-span-1 md:col-span-12 flex justify-center items-start min-h-[60vh] pt-10">
+            <motion.div 
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="w-full max-w-2xl bg-gradient-to-br from-[#1c1c1e] to-[#121212] p-8 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden"
+            >
+                {/* Background Decor */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-40 h-40 bg-blue-500/10 rounded-full blur-[60px] pointer-events-none"></div>
+
+                <div className="flex items-center gap-3 mb-8 relative z-10">
+                    <div className="p-3 bg-emerald-500/20 rounded-xl text-emerald-400">
+                        <Globe size={28} />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold text-white">Live Rate Checker</h2>
+                        <p className="text-gray-400 text-sm">Real-time global currency exchange rates</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-center relative z-10">
+                    
+                    {/* FROM INPUT */}
+                    <div className="bg-[#27272a] p-4 rounded-2xl border border-white/10 hover:border-emerald-500/50 transition-colors">
+                        <label className="text-xs text-gray-400 font-medium mb-1 block">Amount</label>
+                        <input 
+                            type="number" 
+                            value={amount} 
+                            onChange={e => setAmount(e.target.value)} 
+                            className="w-full bg-transparent text-3xl font-bold text-white outline-none mb-2"
+                        />
+                        <select 
+                            value={fromCurr} 
+                            onChange={e => setFromCurr(e.target.value)}
+                            className="w-full bg-[#1c1c1e] text-gray-300 py-2 px-3 rounded-lg border border-white/10 outline-none cursor-pointer"
+                        >
+                            {currencyList.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+
+                    {/* SWAP BUTTON */}
+                    <div className="flex justify-center">
+                        <motion.button 
+                            onClick={handleSwap}
+                            animate={{ rotate: isRotating ? 180 : 0 }}
+                            transition={{ duration: 0.4 }}
+                            className="p-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                        >
+                            <ArrowRightLeft size={24} />
+                        </motion.button>
+                    </div>
+
+                    {/* TO OUTPUT */}
+                    <div className="bg-[#27272a] p-4 rounded-2xl border border-white/10 hover:border-emerald-500/50 transition-colors">
+                        <label className="text-xs text-gray-400 font-medium mb-1 block">Converted To</label>
+                        <motion.div 
+                            key={convertedValue} // Triggers animation on change
+                            initial={{ scale: 0.95, opacity: 0.5 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="w-full bg-transparent text-3xl font-bold text-emerald-400 mb-2 truncate"
+                        >
+                            {convertedValue}
+                        </motion.div>
+                        <select 
+                            value={toCurr} 
+                            onChange={e => setToCurr(e.target.value)}
+                            className="w-full bg-[#1c1c1e] text-gray-300 py-2 px-3 rounded-lg border border-white/10 outline-none cursor-pointer"
+                        >
+                            {currencyList.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                <div className="mt-8 flex justify-center text-gray-500 text-xs gap-4">
+                    <span className="flex items-center gap-1"><RefreshCw size={12}/> Live Rates</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1"><TrendingUp size={12}/> 1 {fromCurr} = {(convertedValue/amount).toFixed(4)} {toCurr}</span>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
+
 // --- DASHBOARD COMPONENT ---
 function DashboardComponent({ onLogout }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [expenses, setExpenses] = useState([]);
+  const [forecast, setForecast] = useState([]); 
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('idle'); 
+  const { formatAmount, currency, setCurrency } = useCurrency(); // Get rates too
   
   // Settings State
   const [monthlyBudget, setMonthlyBudget] = useState(10000);
   const [dailyBudget, setDailyBudget] = useState(500);
   const [categories, setCategories] = useState(['Food', 'Travel', 'Shopping', 'Bills', 'Rent', 'Medical', 'Utilities']);
   const [newCategory, setNewCategory] = useState('');
-  
+
   // UI States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -194,7 +301,6 @@ function DashboardComponent({ onLogout }) {
 
   // --- GET TOKEN ---
   const token = localStorage.getItem('token');
-  // --- ATTACH TOKEN TO HEADERS ---
   const authHeader = { headers: { Authorization: `Bearer ${token}` } };
 
   useEffect(() => { fetchData(); }, []);
@@ -211,12 +317,21 @@ function DashboardComponent({ onLogout }) {
         setDailyBudget(setRes.data.dailyBudget || 500);
         if(setRes.data.categories?.length > 0) setCategories(setRes.data.categories);
       }
+
+      try {
+        const predRes = await axios.get(`${API_BASE_URL}/api/predict`, authHeader);
+        setForecast(predRes.data.forecast);
+      } catch (err) {
+        console.log("Prediction not available yet (need more data)");
+      }
+
     } catch (err) { console.error(err); }
   };
 
   const handleUpdateLimits = async () => {
-    const newM = prompt("Set Monthly Budget (₹):", monthlyBudget);
-    const newD = prompt("Set Daily Spend Limit (₹):", dailyBudget);
+    // Show current value formatted as currency in prompt
+    const newM = prompt(`Set Monthly Budget (${formatAmount(0).replace('0.00', '')}):`, monthlyBudget);
+    const newD = prompt(`Set Daily Spend Limit (${formatAmount(0).replace('0.00', '')}):`, dailyBudget);
     
     if (newM && !isNaN(newM) && newD && !isNaN(newD)) {
       setMonthlyBudget(Number(newM));
@@ -282,15 +397,24 @@ function DashboardComponent({ onLogout }) {
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setLoading(true);
+
+    setUploadStatus('uploading'); 
+
     const data = new FormData();
     data.append('receipt', file);
+
     try {
       await axios.post(`${API_BASE_URL}/api/scan`, data, authHeader);
-      alert("Scanned!");
-      fetchData();
-    } catch (err) { alert("Scan Failed"); }
-    finally { setLoading(false); e.target.value = null; }
+      setUploadStatus('success'); 
+      fetchData(); 
+      setTimeout(() => setUploadStatus('idle'), 3000);
+    } catch (err) {
+      console.error("Scan error:", err);
+      setUploadStatus('error');
+      setTimeout(() => setUploadStatus('idle'), 3000);
+    } finally {
+      e.target.value = null; 
+    }
   };
 
   const generateAIReport = async () => {
@@ -384,7 +508,7 @@ function DashboardComponent({ onLogout }) {
 
   return (
     <div className="min-h-screen bg-[#121212] text-white font-sans">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onUploadClick={() => fileInputRef.current.click()} isOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onLogout={onLogout} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onUploadClick={() => fileInputRef.current.click()} isOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
       
       <AddTransactionModal 
         isOpen={isModalOpen} 
@@ -398,13 +522,73 @@ function DashboardComponent({ onLogout }) {
         <header className="flex justify-between items-center p-6 gap-4 border-b border-white/5 sticky top-0 bg-[#121212]/80 backdrop-blur z-30">
           <div className="flex items-center gap-4">
              <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 text-gray-400 hover:text-white bg-[#1c1c1e] rounded-lg"><Menu size={24} /></button>
-             <h2 className="text-xl md:text-2xl font-bold capitalize text-gray-200">{activeTab}</h2>
+             <h2 className="text-xl md:text-2xl font-bold capitalize text-gray-200">
+                {activeTab === 'rates' ? 'Currency Rates' : activeTab}
+             </h2>
           </div>
-          <div className="flex gap-3">
-             <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} disabled={loading} />
-             <button onClick={() => fileInputRef.current.click()} className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${loading ? 'bg-emerald-600' : 'bg-[#1c1c1e] hover:bg-zinc-800'}`}>
-                {loading ? <Loader2 className="animate-spin" size={18}/> : <Camera size={18}/>}
-                <span className="hidden md:inline text-sm font-medium">{loading ? "Scanning..." : "Scan Bill"}</span>
+          
+          <div className="flex items-center gap-4">
+             {/* === ANIMATED UPLOAD BUTTON === */}
+             <div className="relative h-[42px] min-w-[140px]"> 
+                 <input 
+                     type="file" 
+                     ref={fileInputRef} 
+                     id="receipt-upload" 
+                     className="hidden" 
+                     accept="image/*,application/pdf" 
+                     onChange={handleFileUpload} 
+                     disabled={uploadStatus === 'uploading'} 
+                 />
+                 <label 
+                     htmlFor="receipt-upload" 
+                     className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl cursor-pointer transition border h-full relative overflow-hidden
+                     ${uploadStatus === 'uploading' ? 'bg-[#27272a] border-emerald-500/50 cursor-not-allowed' : ''}
+                     ${uploadStatus === 'success' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-[#1c1c1e] hover:bg-[#32323a] border-white/10 text-white'}
+                     ${uploadStatus === 'error' ? 'bg-red-500/20 border-red-500 text-red-400' : ''}
+                     `}
+                 >
+                     <AnimatePresence mode="wait">
+                         {uploadStatus === 'idle' && (
+                             <motion.div 
+                                 key="idle" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                                 className="flex items-center gap-2"
+                             >
+                                 <UploadCloud size={18} /> <span className="hidden md:inline text-sm font-medium">Scan Bill</span>
+                             </motion.div>
+                         )}
+
+                         {uploadStatus === 'uploading' && (
+                             <motion.div 
+                                 key="uploading" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}
+                                 className="absolute inset-0 flex items-center justify-center"
+                             >
+                                 <Loader2 className="animate-spin text-emerald-500" size={22} />
+                             </motion.div>
+                         )}
+
+                         {uploadStatus === 'success' && (
+                             <motion.div 
+                                 key="success" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1.2 }} exit={{ opacity: 0, scale: 0.5 }}
+                                 className="absolute inset-0 flex items-center justify-center"
+                             >
+                                 <CheckCircle className="text-emerald-500 font-bold" size={24} />
+                             </motion.div>
+                         )}
+                          {uploadStatus === 'error' && (
+                             <motion.div 
+                                 key="error" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}
+                                 className="absolute inset-0 flex items-center justify-center"
+                             >
+                                 <X className="text-red-500" size={22} />
+                             </motion.div>
+                         )}
+                     </AnimatePresence>
+                 </label>
+             </div>
+
+             {/* === LOGOUT BUTTON (NEW LOCATION) === */}
+             <button onClick={onLogout} className="p-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition border border-red-500/20" title="Logout">
+                <LogOut size={20} />
              </button>
           </div>
         </header>
@@ -419,8 +603,8 @@ function DashboardComponent({ onLogout }) {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-gray-400 text-sm font-medium">Monthly Budget</h3>
-                    <h2 className="text-3xl font-bold mt-1 text-white">₹{monthlyBudget.toLocaleString()}</h2>
-                    <p className="text-xs text-gray-500 mt-1">Spent: ₹{monthlySpent.toLocaleString()}</p>
+                    <h2 className="text-3xl font-bold mt-1 text-white">{formatAmount(monthlyBudget)}</h2>
+                    <p className="text-xs text-gray-500 mt-1">Spent: {formatAmount(monthlySpent)}</p>
                   </div>
                   <button onClick={handleUpdateLimits} className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-emerald-400"><Edit3 size={18}/></button>
                 </div>
@@ -433,9 +617,9 @@ function DashboardComponent({ onLogout }) {
                 <div className="flex justify-between items-start">
                    <div>
                       <h3 className="text-gray-400 text-sm font-medium">Daily Limit</h3>
-                      <h2 className="text-3xl font-bold mt-1 text-white">₹{dailyBudget.toLocaleString()}</h2>
+                      <h2 className="text-3xl font-bold mt-1 text-white">{formatAmount(dailyBudget)}</h2>
                       <p className={`text-xs mt-1 ${dailySpent > dailyBudget ? 'text-red-400' : 'text-emerald-400'}`}>
-                        Today's Spend: ₹{dailySpent}
+                        Today's Spend: {formatAmount(dailySpent)}
                       </p>
                    </div>
                    <div className={`p-2 rounded-lg ${dailySpent > dailyBudget ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
@@ -446,8 +630,8 @@ function DashboardComponent({ onLogout }) {
 
               <Card className="col-span-1 md:col-span-12 lg:col-span-4">
                  <h3 className="text-gray-400 text-sm font-medium">Total Savings (Month)</h3>
-                 <h2 className="text-3xl font-bold mt-1 text-emerald-400">₹{monthlySaving.toLocaleString()}</h2>
-                 <p className="text-xs text-gray-500 mt-1">Available to spend: ₹{Math.max(monthlyBudget - monthlySpent, 0).toLocaleString()}</p>
+                 <h2 className="text-3xl font-bold mt-1 text-emerald-400">{formatAmount(monthlySaving)}</h2>
+                 <p className="text-xs text-gray-500 mt-1">Available to spend: {formatAmount(Math.max(monthlyBudget - monthlySpent, 0))}</p>
               </Card>
 
               {/* Row 2: Graph & Stack */}
@@ -466,7 +650,7 @@ function DashboardComponent({ onLogout }) {
                     <ComposedChart data={dashChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                       <XAxis dataKey="name" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(value) => `₹${value}`} />
+                      <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(value) => formatAmount(value)} />
                       <Tooltip contentStyle={{ backgroundColor: '#1c1c1e', border: '1px solid #333' }} itemStyle={{ color: '#fff' }} />
                       <Legend />
                       <Bar name="Expense" dataKey="expense" barSize={30} fill="#ef4444" radius={[4, 4, 0, 0]} />
@@ -497,15 +681,15 @@ function DashboardComponent({ onLogout }) {
                    <h3 className="text-sm font-semibold mb-4">Today's Health</h3>
                    <div className="flex items-center justify-between mb-2">
                       <span className="text-gray-400 text-sm">Daily Limit</span>
-                      <span className="text-white font-bold">₹{dailyBudget}</span>
+                      <span className="text-white font-bold">{formatAmount(dailyBudget)}</span>
                    </div>
                    <div className="flex items-center justify-between mb-4">
                       <span className="text-gray-400 text-sm">Spent</span>
-                      <span className="text-red-400 font-bold">-₹{dailySpent}</span>
+                      <span className="text-red-400 font-bold">-{formatAmount(dailySpent)}</span>
                    </div>
                    <div className="border-t border-white/10 pt-4 flex items-center justify-between">
                       <span className="text-gray-400 text-sm">Saved Today</span>
-                      <span className="text-emerald-400 font-bold text-xl">+₹{dailySaving}</span>
+                      <span className="text-emerald-400 font-bold text-xl">+{formatAmount(dailySaving)}</span>
                    </div>
                 </Card>
               </div>
@@ -536,7 +720,7 @@ function DashboardComponent({ onLogout }) {
                             <td className="py-4 text-gray-400">{new Date(t.date).toLocaleDateString()}</td>
                             <td className="py-4 text-gray-400"><span className="bg-white/5 px-2 py-1 rounded text-xs">{t.category}</span></td>
                             <td className="py-4 text-gray-400 text-xs">{t.paymentMode || 'Cash'}</td>
-                            <td className="py-4 font-bold text-emerald-400">₹{t.amount.toFixed(2)}</td>
+                            <td className="py-4 font-bold text-emerald-400">{formatAmount(t.amount)}</td>
                             <td className="py-4 text-right">
                               <button onClick={() => deleteExpense(t._id)} className="p-2 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition"><Trash2 size={14}/></button>
                             </td>
@@ -573,7 +757,7 @@ function DashboardComponent({ onLogout }) {
                       <div className="p-3 bg-red-500/10 rounded-full text-red-500 shrink-0"><IndianRupee size={24} /></div>
                       <div className="min-w-0">
                          <p className="text-xs text-gray-400 truncate">Total Spent</p>
-                         <h3 className="text-2xl font-bold truncate">₹{analyticsTotal.toLocaleString()}</h3>
+                         <h3 className="text-2xl font-bold truncate">{formatAmount(analyticsTotal)}</h3>
                       </div>
                    </Card>
                    <Card className="p-5 flex flex-row items-center gap-4 overflow-hidden">
@@ -581,27 +765,87 @@ function DashboardComponent({ onLogout }) {
                       <div className="min-w-0">
                          <p className="text-xs text-gray-400 truncate">Top Category</p>
                          <h3 className="text-xl font-bold truncate">{analyticsMaxCategory.name}</h3>
-                         <p className="text-xs text-gray-500 truncate">₹{analyticsMaxCategory.value.toLocaleString()}</p>
+                         <p className="text-xs text-gray-500 truncate">{formatAmount(analyticsMaxCategory.value)}</p>
                       </div>
                    </Card>
                    <Card className="p-5 flex flex-row items-center gap-4 overflow-hidden">
                       <div className="p-3 bg-emerald-500/10 rounded-full text-emerald-500 shrink-0"><Wallet size={24} /></div>
                       <div className="min-w-0">
                          <p className="text-xs text-gray-400 truncate">Est. Savings</p>
-                         <h3 className="text-2xl font-bold truncate">₹{Math.max(((analyticsView === 'monthly' ? monthlyBudget : monthlyBudget * 12) - analyticsTotal), 0).toLocaleString()}</h3>
+                         <h3 className="text-2xl font-bold truncate">{formatAmount(Math.max(((analyticsView === 'monthly' ? monthlyBudget : monthlyBudget * 12) - analyticsTotal), 0))}</h3>
                       </div>
                    </Card>
                 </div>
+                {/* PREDICTION CHART */}
+                <Card className="col-span-1 md:col-span-12 mb-6 border border-emerald-500/30 bg-emerald-500/5">
+                    <div className="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2">
+                                🔮 AI Future Forecast
+                            </h3>
+                            <p className="text-xs text-gray-400">Predicted spending for next 30 days (Prophet Model)</p>
+                        </div>
+                        {forecast.length === 0 && (
+                            <span className="text-xs text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded">
+                                Need data from 5+ days
+                            </span>
+                        )}
+                    </div>
+                    
+                    {forecast.length > 0 ? (
+                        <div className="h-[250px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={forecast}>
+                                    <defs>
+                                        <linearGradient id="colorPred" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                    <XAxis 
+                                        dataKey="date" 
+                                        tick={{ fill: '#6b7280', fontSize: 10 }} 
+                                        tickFormatter={(str) => {
+                                            const date = new Date(str);
+                                            return `${date.getDate()}/${date.getMonth()+1}`;
+                                        }}
+                                    />
+                                    <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: '#1c1c1e', border: '1px solid #333' }}
+                                        itemStyle={{ color: '#10b981' }}
+                                        labelFormatter={(label) => `Date: ${label}`}
+                                        formatter={(value) => [`${formatAmount(value)}`, "Predicted Spend"]}
+                                    />
+                                    <Area 
+                                        type="monotone" 
+                                        dataKey="predicted_amount" 
+                                        stroke="#10b981" 
+                                        fillOpacity={1} 
+                                        fill="url(#colorPred)" 
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="h-[150px] flex flex-col items-center justify-center text-gray-500 text-sm">
+                            <p>Not enough history to predict the future.</p>
+                            <p className="text-xs mt-1">Try adding expenses for different dates!</p>
+                        </div>
+                    )}
+                </Card>
 
                 {/* Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
                    <Card className="lg:col-span-2 h-[400px]">
                       <h3 className="text-sm font-semibold mb-4">Expense Trend</h3>
                       <ResponsiveContainer width="100%" height="100%">
                          <ComposedChart data={chartData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false}/>
                             <XAxis dataKey="name" tick={{fill: '#888'}} />
-                            <YAxis tick={{fill: '#888'}} tickFormatter={val => `₹${val}`} />
+                            <YAxis tick={{fill: '#888'}} tickFormatter={val => formatAmount(val)} />
                             <Tooltip contentStyle={{backgroundColor: '#121212', border: '1px solid #333'}} />
                             <Legend />
                             <Bar name="Expense" dataKey="expense" fill="#ef4444" radius={[4,4,0,0]} barSize={20} />
@@ -650,16 +894,40 @@ function DashboardComponent({ onLogout }) {
              </div>
           )}
 
+          {/* === NEW VIEW: CURRENCY RATES === */}
+          {activeTab === 'rates' && <CurrencyConverterView />}
+
           {/* === SETTINGS VIEW === */}
           {activeTab === 'settings' && (
              <div className="col-span-1 md:col-span-12 space-y-6">
+                
+                {/* NEW: Global Currency Setting */}
+                <Card>
+                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Globe size={20} className="text-blue-400"/> Currency & Region</h3>
+                   <div className="space-y-3">
+                         <label className="text-sm font-medium text-gray-300">App Display Currency</label>
+                         <p className="text-xs text-gray-500">Change the currency symbol across the entire dashboard.</p>
+                         <select 
+                            value={currency} 
+                            onChange={(e) => setCurrency(e.target.value)}
+                            className="w-full bg-[#27272a] text-white py-3 px-4 rounded-xl border border-white/10 outline-none cursor-pointer focus:border-emerald-500"
+                         >
+                            <option value="INR">INR (₹) - Indian Rupee</option>
+                            <option value="USD">USD ($) - US Dollar</option>
+                            <option value="EUR">EUR (€) - Euro</option>
+                            <option value="GBP">GBP (£) - British Pound</option>
+                            <option value="AED">AED (د.إ) - UAE Dirham</option>
+                         </select>
+                   </div>
+                </Card>
+
                 <Card>
                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Settings size={20} className="text-emerald-400"/> General Settings</h3>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                          <h4 className="text-sm font-medium text-gray-400 uppercase tracking-wider">Financial Goals</h4>
                          <div className="bg-[#27272a] p-4 rounded-xl border border-white/5">
-                            <label className="text-xs text-gray-400">Monthly Budget (₹)</label>
+                            <label className="text-xs text-gray-400">Monthly Budget ({currency})</label>
                             <input type="number" className="w-full bg-transparent border-b border-white/10 py-2 text-white focus:border-emerald-500 outline-none" 
                                value={monthlyBudget} 
                                onChange={(e) => {
@@ -670,7 +938,7 @@ function DashboardComponent({ onLogout }) {
                             />
                          </div>
                          <div className="bg-[#27272a] p-4 rounded-xl border border-white/5">
-                            <label className="text-xs text-gray-400">Daily Spend Limit (₹)</label>
+                            <label className="text-xs text-gray-400">Daily Spend Limit ({currency})</label>
                             <input type="number" className="w-full bg-transparent border-b border-white/10 py-2 text-white focus:border-emerald-500 outline-none" 
                                value={dailyBudget} 
                                onChange={(e) => {
