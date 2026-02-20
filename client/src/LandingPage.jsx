@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle, Code, DollarSign, Star } from 'lucide-react'; // Added icons
+import { X, Mail, Lock, User, ArrowRight, Loader2, AlertCircle, CheckCircle, Code, Star, Globe } from 'lucide-react'; // Added Globe icon
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -139,7 +139,6 @@ const LandingPage = ({ onLoginSuccess }) => {
       <nav className="flex justify-between items-center p-6 max-w-7xl mx-auto relative z-10">
         <div className="flex items-center gap-2"><img src={logo} alt="Xpense Logo" className="h-16 w-auto object-contain" /></div>
         <div className="hidden md:flex gap-8 text-gray-300 font-medium">
-            {/* UPDATED LINKS TO BUTTONS */}
             <button onClick={() => setShowFeatures(true)} className="hover:text-emerald-400 transition-colors">Features</button>
             <button onClick={() => setShowPricing(true)} className="hover:text-emerald-400 transition-colors">Pricing</button>
             <button onClick={() => setShowAbout(true)} className="hover:text-emerald-400 transition-colors">About</button>
@@ -167,7 +166,7 @@ const LandingPage = ({ onLoginSuccess }) => {
         </div>
       </main>
 
-      {/* --- NEW MODALS --- */}
+      {/* --- MODALS --- */}
 
       {/* FEATURES MODAL */}
       <Modal isOpen={showFeatures} onClose={() => setShowFeatures(false)} title="🔥 Key Features">
@@ -184,6 +183,10 @@ const LandingPage = ({ onLoginSuccess }) => {
                 <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400"><CheckCircle size={20}/></div>
                 <div><h4 className="font-bold text-white">Smart Expense Tracking</h4><p className="text-sm text-gray-400">Categorize, track, and visualize your daily expenses with ease.</p></div>
             </div>
+            <div className="flex items-start gap-3">
+                <div className="bg-orange-500/20 p-2 rounded-lg text-orange-400"><Globe size={20}/></div>
+                <div><h4 className="font-bold text-white">Global Currency & Rates</h4><p className="text-sm text-gray-400">Switch currencies instantly and check live exchange rates.</p></div>
+            </div>
         </div>
       </Modal>
 
@@ -192,7 +195,7 @@ const LandingPage = ({ onLoginSuccess }) => {
         <div className="text-center space-y-4">
             <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-900/20 border border-emerald-500/50 p-6 rounded-2xl">
                 <h3 className="text-xl font-bold text-emerald-400">Student Plan</h3>
-                <div className="text-4xl font-extrabold text-white my-2">Free<span className="text-sm font-normal text-gray-400"> </span></div>
+                <div className="text-4xl font-extrabold text-white my-2">Free<span className="text-sm font-normal text-gray-400">  </span></div>
                 <p className="text-gray-300 text-sm">Access to all AI features, Prediction Engine, and Unlimited tracking.</p>
                 <div className="mt-4 text-xs text-emerald-200 bg-emerald-500/20 py-1 px-3 rounded-full inline-block">
                     Current Status: Active
@@ -217,8 +220,8 @@ const LandingPage = ({ onLoginSuccess }) => {
             
             <div className="border-t border-white/10 pt-4">
                 <p className="text-gray-400 text-sm mb-2">For any help or collaboration:</p>
-                <a href="mailto:ankit.personal11@gmail.com" className="flex items-center justify-center gap-2 text-white bg-white/10 hover:bg-white/20 py-2 rounded-lg transition-colors">
-                    <Mail size={18} /> ankit.personal11@gmail.com
+                <a href="mailto:ankit@gmail.com" className="flex items-center justify-center gap-2 text-white bg-white/10 hover:bg-white/20 py-2 rounded-lg transition-colors">
+                    <Mail size={18} /> ankit@gmail.com
                 </a>
             </div>
         </div>
