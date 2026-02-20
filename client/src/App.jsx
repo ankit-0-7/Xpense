@@ -16,9 +16,10 @@ import ReactMarkdown from 'react-markdown';
 import LandingPage from './LandingPage';
 import logo from "./ExpenseLogo.png"; // Ensure this image is in client/src/
 import { CurrencyProvider, useCurrency } from './context/CurrencyContext.jsx'; 
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://probable-waddle-v9xw9q9gxvj24pg-5000.app.github.dev";
-
+//change this line when using codespace
+// const API_BASE_URL = import.meta.env.VITE_API_URL || "https://probable-waddle-v9xw9q9gxvj24pg-5000.app.github.dev";
+// Change line 18 to this:
+const API_BASE_URL = "https://xpense-backend-a9fy.onrender.com";
 // --- REUSABLE COMPONENTS ---
 const Card = ({ children, className = "" }) => (
   <motion.div 
