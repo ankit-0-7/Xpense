@@ -8,11 +8,10 @@ import { GoogleLogin } from '@react-oauth/google';
 import backgroundImage from "./Untitled design.png"; 
 import logo from "./ExpenseLogo.png"; 
 
-// const API_BASE_URL = "https://probable-waddle-v9xw9q9gxvj24pg-5000.app.github.dev";
-// const API_BASE_URL = "https://xpense-backend-a9fy.onrender.com";
-// This forces the app to use Render as the backup if the Vercel variable fails
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://xpense-backend-a9fy.onrender.com";
-
+// --- API CONFIGURATION ---
+// Uses environment variable for production (Vercel/Render)
+// Defaults to localhost:5000 for local dev and GitHub Codespaces
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://probable-waddle-v9xw9q9gxvj24pg-5000.app.github.dev";
 // --- ANIMATION VARIANTS ---
 const fadeUpVariants = {
   hidden: { opacity: 0, y: 30 },

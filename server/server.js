@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config(); 
 import { OAuth2Client } from 'google-auth-library';
 import express from 'express';
-import axios from 'axios'; // NEW: To talk to Python
+import axios from 'axios'; // To talk to Python
 import mongoose from 'mongoose';
 import cors from 'cors';
 import multer from 'multer';
@@ -14,21 +14,19 @@ import { analyzeReceipt } from './services/aiService.js';
 const app = express();
 
 // --- MIDDLEWARE ---
-// app.use(cors({
-//   // Add your actual Vercel URL and your local development URL
-//   origin: [
-//     "http://localhost:5173", 
-//     "https://xpense-gules.vercel.app/",
-//     "https://xpense-5v0rjazbu-ankit-sharmas-projects-b09bf265.vercel.app" // Replace this with your REAL Vercel URL
-//   ], 
-//   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-//   allowedHeaders: ['Content-Type', 'Authorization']
-// }));
+// Dynamic CORS: Allows Localhost, Codespaces, Vercel, and Render seamlessly
 app.use(cors({
   origin: function (origin, callback) {
-    // Allows localhost and ANY Vercel deployment
-    if (!origin || origin.endsWith(".vercel.app") || origin.includes("localhost")) {
+    // Allows requests with no origin (like mobile apps or Postman)
+    if (!origin) return callback(null, true);
+    
+    if (
+      origin.includes("localhost") || 
+      origin.includes("127.0.0.1") ||
+      origin.endsWith(".vercel.app") || 
+      origin.endsWith(".onrender.com") ||
+      origin.endsWith(".github.dev") // Catches all Codespace frontend URLs
+    ) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
@@ -38,6 +36,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
 
 // --- CONFIG ---
@@ -137,6 +136,7 @@ app.post('/api/auth/login', async (req, res) => {
     res.json({ token, user: { name: user.name, email: user.email } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 // GOOGLE LOGIN ROUTE
 app.post('/api/auth/google', async (req, res) => {
   try {
@@ -270,13 +270,14 @@ app.post('/api/scan', auth, upload.single('receipt'), async (req, res) => {
     res.json(newExpense);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
-// 5. PREDICTION ROUTE (Talks to Python)
 
+// 5. PREDICTION ROUTE (Talks to Python)
 app.get('/api/predict', auth, async (req, res) => {
   try {
     // 1. We ask the Python Service for the forecast
-    // Note: We send the User ID so Python knows whose data to fetch
-    const pythonResponse = await axios.get(`http://127.0.0.1:5001/predict/${req.user._id}`);
+    // Uses ENV variable for Render, defaults to Codespaces local port
+    const pythonBaseUrl = process.env.PYTHON_SERVICE_URL || 'http://127.0.0.1:5001';
+    const pythonResponse = await axios.get(`${pythonBaseUrl}/predict/${req.user._id}`);
     
     // 2. We send the Python answer back to our Frontend
     res.json(pythonResponse.data);
@@ -309,8 +310,8 @@ app.post('/api/analyze-spending', auth, async (req, res) => {
     
     try {
         // We ask Python: "What is the forecast for this user?"
-        // Note: We use 127.0.0.1 to talk to the local Python server
-        const predResponse = await axios.get(`http://127.0.0.1:5001/predict/${req.user._id}`);
+        const pythonBaseUrl = process.env.PYTHON_SERVICE_URL || 'http://127.0.0.1:5001';
+        const predResponse = await axios.get(`${pythonBaseUrl}/predict/${req.user._id}`);
         const forecast = predResponse.data;
         predictedAmount = forecast.total_predicted_spend;
         
